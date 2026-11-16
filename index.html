@@ -21,7 +21,7 @@ input,textarea,select{background:#F2E8D5;color:#3B3028;border:2px solid #3B3028;
 </style></head><body><div id="root"></div>
 <script type="text/babel">
 const {useState,useEffect,useMemo,useRef}=React;
-const API_URL="PASTE_URL_WEB_APP_ANDA_DI_SINI"; // URL Web App Apps Script (.../exec)
+const API_URL="https://script.google.com/macros/s/AKfycbww5x8eWKggp9Aa5JYBBrO7ICWKOOCzJMMAJ3cURuZJULl83eRD10jtGAfbFrjhlotoew/exec"; // URL Web App Apps Script (.../exec)
 const norm=s=>String(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^\p{L}\p{N}\s]/gu,' ').replace(/\s+/g,' ').trim();
 async function api(action,body){
   const r=body?await fetch(API_URL,{method:'POST',headers:{'Content-Type':'text/plain'},body:JSON.stringify({action,...body})}):await fetch(API_URL+'?action='+action);
