@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="id"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#3B3028"><link rel="manifest" href="manifest.webmanifest"><link rel="icon" href="icon-192.png"><link rel="apple-touch-icon" href="icon-192.png"><title>VITAMIN FUNCIONAL TEST</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;600&family=Playfair+Display:wght@700;900&family=Space+Mono&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com/3.4.17"></script>
+<script src="https://cdn.jsdelivr.net/npm/react@18.3.1/umd/react.production.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@babel/standalone@7.25.6/babel.min.js"></script>
+<style>
+body{background:#F2E8D5;color:#3B3028;font-family:'DM Sans',sans-serif;background-image:radial-gradient(#3b302810 1px,transparent 1px);background-size:5px 5px}
+.dark body,body.dk{background:#2A221C;color:#F2E8D5}
+.pf{font-family:'Playfair Display',serif}.sm{font-family:'Space Mono',monospace}
+.card{background:#DCC9A8;border:2px solid #3B3028;box-shadow:4px 4px 0 #3B3028;border-radius:2px}
+body.dk .card{background:#3B3028;border-color:#D6AC52;box-shadow:4px 4px 0 #D6AC52}
+.btn{background:#C66B3D;color:#F2E8D5;border:2px solid #3B3028;padding:.45rem .9rem;font-weight:600;box-shadow:2px 2px 0 #3B3028}
+.btn:active{transform:translate(2px,2px);box-shadow:none}.btn2{background:transparent;color:inherit}
+.tag{background:#687354;color:#F2E8D5;font-size:11px;padding:1px 6px}
+mark{background:#D6AC52;color:#3B3028}
+input,textarea,select{background:#F2E8D5;color:#3B3028;border:2px solid #3B3028;padding:.5rem;width:100%}
+</style></head><body><div id="root"></div>
+<script type="text/babel">
+const {useState,useEffect,useMemo,useRef}=React;
+const API_URL="https://script.google.com/macros/s/AKfycbxWz7AgoKtGRyl2xXa3Lb7EGt5Jt-1ACzxwuE_Y-PZYSX_0BXvSoMWvZeaS5A32RLx_BQ/exec"; // URL Web App Apps Script (.../exec)
+const norm=s=>String(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^\p{L}\p{N}\s]/gu,' ').replace(/\s+/g,' ').trim();
+async function api(action,body){
+  const r=body?await fetch(API_URL,{method:'POST',headers:{'Content-Type':'text/plain'},body:JSON.stringify({action,...body})}):await fetch(API_URL+'?action='+action);
+  const j=await r.json(); if(!j.ok) throw new Error(j.error||'Gagal'); return j;
+}
+const toItems=d=>[...d.KISI_KISI.map(r=>({id:r.ID,type:'soal',title:r.Judul,cat:r.Kategori,q:r.Pertanyaan,a:r.Jawaban,p:r.Pembahasan,kw:r.Kata_Kunci,src:r.Sumber,date:r.Tanggal,raw:r})),
+ ...d.MATERI.map(r=>({id:r.ID,type:'materi',title:r.Judul,cat:r.Kategori,q:r.Isi_Materi,kw:r.Kata_Kunci,src:r.Sumber,date:r.Tanggal,raw:r}))];
+function search(items,query,cat){
+  const t=norm(query).split(' ').filter(Boolean);
+  return items.filter(i=>!cat||i.cat===cat).map(i=>{
+    const f={ti:norm(i.title),kw:norm(i.kw),ca:norm(i.cat),q:norm(i.q),a:norm(i.a),p:norm(i.p)};
+    let s=0;for(const w of t){let h=0;
+      if(f.ti.includes(w))h+=5;if(f.kw.includes(w))h+=4;if(f.ca.includes(w))h+=3;if(f.q.includes(w))h+=2;if(f.a.includes(w))h+=1;if(f.p.includes(w))h+=1;
+      if(!h){s=0;break}s+=h}
+    return {i,s}}).filter(x=>!t.length||x.s>0).sort((a,b)=>b.s-a.s).map(x=>x.i);
+}
+const Hl=({text,q})=>{const t=norm(q).split(' ').filter(Boolean).map(w=>w.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'));
+  if(!t.length||!text)return <>{text}</>;
+  return <>{String(text).split(new RegExp('('+t.join('|')+')','gi')).map((p,k)=>t.some(w=>p.toLowerCase()===w)?<mark key={k}>{p}</mark>:p)}</>};
+
+function ItemCard({it,q,fav,onFav,toast}){
+  const [a,setA]=useState(false),[p,setP]=useState(false);
+  const cp=(x)=>navigator.clipboard.writeText(x||'').then(()=>toast('Tersalin'));
+  const share=()=>navigator.share?navigator.share({title:it.title,text:it.q}):cp(it.title+'\n'+it.q);
+  return <div className="card p-3 mb-3">
+    <div className="flex justify-between items-center sm text-xs"><span>{it.type==='soal'?'ARSIP SOAL':'ARSIP MATERI'} #{it.id}</span><span className="tag">{it.cat}</span></div>
+    <h3 className="pf text-lg mt-1"><Hl text={it.title} q={q}/></h3>
+    <p className="mt-1 whitespace-pre-wrap"><Hl text={it.q} q={q}/></p>
+    {it.type==='soal'&&a&&<p className="mt-2 border-t-2 border-dashed border-[#3B3028] pt-2 whitespace-pre-wrap"><b>Jawaban:</b> <Hl text={it.a} q={q}/></p>}
+    {it.type==='soal'&&p&&<p className="mt-2 whitespace-pre-wrap"><b>Pembahasan:</b> <Hl text={it.p} q={q}/></p>}
+    {it.kw&&<p className="sm text-xs mt-2 opacity-70">kata kunci: {it.kw}{it.src?' | sumber: '+it.src:''}</p>}
+    <div className="flex flex-wrap gap-2 mt-3">
+      {it.type==='soal'&&<><button className="btn" onClick={()=>setA(!a)}>{a?'Sembunyikan':'Lihat'} jawaban</button>
+      <button className="btn btn2" onClick={()=>setP(!p)}>Pembahasan</button></>}
+      <button className="btn btn2" onClick={()=>cp(it.q)}>Salin</button>
+      {it.type==='soal'&&<button className="btn btn2" onClick={()=>cp(it.a)}>Salin jawaban</button>}
+      <button className="btn btn2" onClick={share}>Bagikan</button>
+      <button className="btn" style={{background:fav?'#D6AC52':'#C66B3D',color:'#3B3028'}} onClick={()=>onFav(it)}>{fav?'★ Favorit':'☆ Favorit'}</button>
+    </div></div>;
+}
+
+function Practice({items,cats,toast,reload}){
+  const [cat,setCat]=useState(''),[n,setN]=useState(5),[deck,setDeck]=useState(null),[i,setI]=useState(0),[show,setShow]=useState(false),[hard,setHard]=useState({}),[ok,setOk]=useState({}),[done,setDone]=useState(false);
+  const pool=items.filter(x=>x.type==='soal'&&(!cat||x.cat===cat));
+  const start=()=>{if(!pool.length)return toast('Tidak ada soal');setDeck([...pool].sort(()=>Math.random()-.5).slice(0,n));setI(0);setShow(false);setHard({});setOk({});setDone(false)};
+  const finish=async()=>{setDone(true);try{await api('add',{table:'RIWAYAT',record:{Kategori:cat||'Semua',Jumlah:deck.length,Benar:Object.values(ok).filter(Boolean).length,Sulit:Object.keys(hard).filter(k=>hard[k]).length}});await reload();toast('Riwayat tersimpan di server')}catch(e){toast('Gagal simpan riwayat: '+e.message)}};
+  if(!deck)return <div className="card p-3"><h2 className="pf text-xl mb-2">Mode Latihan</h2>
+    <select value={cat} onChange={e=>setCat(e.target.value)}><option value="">Semua kategori ({items.filter(x=>x.type==='soal').length} soal)</option>{cats.map(c=><option key={c}>{c}</option>)}</select>
+    <input className="mt-2" type="number" min="1" max="50" value={n} onChange={e=>setN(+e.target.value||1)}/>
+    <button className="btn mt-3" onClick={start}>Mulai latihan</button></div>;
+  if(done){const b=Object.values(ok).filter(Boolean).length;return <div className="card p-3 text-center"><h2 className="pf text-2xl">Hasil Latihan</h2><p className="sm mt-2">Tahu: {b}/{deck.length} | Sulit: {Object.values(hard).filter(Boolean).length}</p><button className="btn mt-3" onClick={()=>setDeck(null)}>Selesai</button></div>}
+  const c=deck[i];
+  return <div className="card p-3"><p className="sm text-xs">SOAL {i+1}/{deck.length} <span className="tag">{c.cat}</span></p>
+    <h3 className="pf text-lg mt-1">{c.title}</h3><p className="whitespace-pre-wrap mt-1">{c.q}</p>
+    {show?<div className="mt-3 border-t-2 border-dashed border-[#3B3028] pt-2"><p className="whitespace-pre-wrap"><b>Jawaban:</b> {c.a}</p>{c.p&&<p className="mt-1 whitespace-pre-wrap">{c.p}</p>}
+      <div className="flex gap-2 mt-2"><button className="btn" onClick={()=>setOk({...ok,[c.id]:true})}>{ok[c.id]?'✓ Tahu':'Tahu'}</button><button className="btn btn2" onClick={()=>setHard({...hard,[c.id]:!hard[c.id]})}>{hard[c.id]?'★ Sulit':'☆ Tandai sulit'}</button></div></div>
+      :<button className="btn mt-3" onClick={()=>setShow(true)}>Tampilkan jawaban</button>}
+    <div className="flex justify-between mt-4"><button className="btn btn2" disabled={!i} onClick={()=>{setI(i-1);setShow(false)}}>Sebelumnya</button>
+      {i<deck.length-1?<button className="btn" onClick={()=>{setI(i+1);setShow(false)}}>Berikutnya</button>:<button className="btn" onClick={finish}>Selesai</button>}</div></div>;
+}
+
+function Admin({data,items,toast,reload}){
+  const [key,setKey]=useState(''),[auth,setAuth]=useState(false),[tab,setTab]=useState('KISI_KISI'),[f,setF]=useState({}),[eid,setEid]=useState(null),[busy,setBusy]=useState(false);
+  const fields={KISI_KISI:['Kategori','Judul','Pertanyaan','Jawaban','Pembahasan','Kata_Kunci','Sumber'],MATERI:['Kategori','Judul','Isi_Materi','Kata_Kunci','Sumber'],KATEGORI:['Nama_Kategori','Deskripsi']};
+  const login=async()=>{try{await api('check',{key});setAuth(true);toast('Admin aktif')}catch(e){toast(e.message)}};
+  const run=async(action,extra)=>{setBusy(true);try{await api(action,{table:tab,key,...extra});await reload();toast('Berhasil disimpan di Google Sheets');setF({});setEid(null)}catch(e){toast('Gagal: '+e.message)}setBusy(false)};
+  if(!auth)return <div className="card p-3 mt-3"><h3 className="pf text-lg">Admin</h3><input type="password" placeholder="Kunci admin" value={key} onChange={e=>setKey(e.target.value)}/><button className="btn mt-2" onClick={login}>Masuk</button></div>;
+  const rows=data[tab];
+  return <div className="card p-3 mt-3"><h3 className="pf text-lg mb-2">Kelola data</h3>
+    <select value={tab} onChange={e=>{setTab(e.target.value);setF({});setEid(null)}}><option value="KISI_KISI">Kisi-kisi</option><option value="MATERI">Materi</option><option value="KATEGORI">Kategori</option></select>
+    {fields[tab].map(k=>k==='Kategori'?<select key={k} className="mt-2" value={f[k]||''} onChange={e=>setF({...f,[k]:e.target.value})}><option value="">Pilih kategori</option>{data.KATEGORI.map(c=><option key={c.ID}>{c.Nama_Kategori}</option>)}</select>
+      :<textarea key={k} rows={['Pertanyaan','Jawaban','Pembahasan','Isi_Materi'].includes(k)?3:1} className="mt-2" placeholder={k.replace('_',' ')} value={f[k]||''} onChange={e=>setF({...f,[k]:e.target.value})}/>)}
+    <button className="btn mt-2" disabled={busy} onClick={()=>eid?run('update',{id:eid,record:f}):run('add',{record:f})}>{eid?'Simpan perubahan':'Tambah'}</button>
+    {eid&&<button className="btn btn2 ml-2" onClick={()=>{setEid(null);setF({})}}>Batal</button>}
+    <div className="mt-3 max-h-72 overflow-auto">{rows.map(r=><div key={r.ID} className="flex justify-between gap-2 border-b border-[#3B3028] py-1 text-sm"><span className="truncate">{r.Judul||r.Nama_Kategori}</span>
+      <span className="shrink-0"><button className="underline mr-2" onClick={()=>{setEid(r.ID);setF(r)}}>Edit</button><button className="underline text-[#A94B3C]" onClick={()=>confirm('Hapus data ini?')&&run('remove',{id:r.ID})}>Hapus</button></span></div>)}</div></div>;
+}
+
+function App(){
+  const [tab,setTab]=useState('home'),[data,setData]=useState(null),[err,setErr]=useState(null),[sync,setSync]=useState(null),[q,setQ]=useState(''),[dq,setDq]=useState(''),[cat,setCat]=useState(''),[msg,setMsg]=useState(''),[hist,setHist]=useState([]),[pg,setPg]=useState(1),[dark,setDark]=useState(false),[mode,setMode]=useState('list'),[inst,setInst]=useState(null);
+  useEffect(()=>{const h=e=>{e.preventDefault();setInst(e)};addEventListener('beforeinstallprompt',h);return()=>removeEventListener('beforeinstallprompt',h)},[]);
+  const toast=m=>{setMsg(m);setTimeout(()=>setMsg(''),2500)};
+  const reload=async()=>{try{const j=await api('all');setData(j.data);setSync(new Date());setErr(null)}catch(e){setErr(e.message||'Server tidak dapat diakses')}};
+  useEffect(()=>{reload();const o=()=>reload();addEventListener('online',o);return()=>removeEventListener('online',o)},[]);
+  useEffect(()=>{const t=setTimeout(()=>{setDq(q);setPg(1)},250);return()=>clearTimeout(t)},[q]);
+  useEffect(()=>{document.body.classList.toggle('dk',dark)},[dark]);
+  const items=useMemo(()=>data?toItems(data):[],[data]);
+  const favIds=useMemo(()=>new Set((data?.FAVORIT||[]).map(f=>f.ID_Item)),[data]);
+  const cats=useMemo(()=>data?data.KATEGORI.map(c=>c.Nama_Kategori):[],[data]);
+  const res=useMemo(()=>search(items,dq,cat),[items,dq,cat]);
+  const toggleFav=async it=>{try{if(favIds.has(it.id)){const f=data.FAVORIT.find(x=>x.ID_Item===it.id);await api('remove',{table:'FAVORIT',id:f.ID})}else await api('add',{table:'FAVORIT',record:{ID_Item:it.id,Jenis_Item:it.type}});await reload()}catch(e){toast('Gagal: '+e.message)}};
+  if(API_URL.startsWith('PASTE'))return <Screen title="URL belum diatur" body="Isi konstanta API_URL di index.html dengan URL Web App Apps Script."/>;
+  if(err&&!data||(err&&!navigator.onLine))return <Screen title="Koneksi terputus" body="VFT membutuhkan internet dan server. Data lama tidak ditampilkan." retry={reload} detail={err}/>;
+  if(!data)return <Screen title="VFT" body="Memuat data dari server..."/>;
+  const list=(arr,showQ)=>{const s=arr.slice(0,pg*20);return <>{s.length?s.map(i=><ItemCard key={i.id} it={i} q={showQ} fav={favIds.has(i.id)} onFav={toggleFav} toast={toast}/>):<p className="card p-3">Tidak ada hasil. Coba kata lain atau ganti kategori.</p>}{arr.length>s.length&&<button className="btn w-full" onClick={()=>setPg(pg+1)}>Muat lebih banyak</button>}</>};
+  const SearchBox=<div><input className="text-lg" placeholder="Cari soal & materi (mis. FIFO, retur barang)" value={q} onChange={e=>{setQ(e.target.value);if(tab==='home')setTab('search')}} onBlur={()=>q.trim()&&setHist(h=>[q.trim(),...h.filter(x=>x!==q.trim())].slice(0,6))}/>
+    {!q&&hist.length>0&&<div className="flex gap-1 flex-wrap mt-1">{hist.map(h=><button key={h} className="tag" onClick={()=>setQ(h)}>{h}</button>)}</div>}</div>;
+  const favItems=items.filter(i=>favIds.has(i.id));
+  return <div className="max-w-xl mx-auto p-3 pb-24">
+    <header className="text-center border-b-4 border-double border-[#3B3028] pb-2 mb-3"><h1 className="pf text-3xl font-black leading-none">VITAMIN FUNCIONAL TEST</h1><p className="sm text-xs mt-1">VFT | YOUR KNOWLEDGE ARCHIVE.</p></header>
+    {msg&&<div className="fixed top-3 left-1/2 -translate-x-1/2 z-50 card px-3 py-2 sm text-sm">{msg}</div>}
+    {tab==='home'&&<>
+      <p className="mb-2">Halo! Mau belajar apa hari ini?</p>{SearchBox}
+      <div className="grid grid-cols-3 gap-2 my-3 text-center">{[['Kisi-kisi',data.KISI_KISI.length],['Materi',data.MATERI.length],['Kategori',cats.length]].map(([l,v])=><div key={l} className="card p-2"><div className="pf text-2xl">{v}</div><div className="text-xs">{l}</div></div>)}</div>
+      <p className="sm text-xs mb-3">● Server terhubung | sinkron {sync?.toLocaleTimeString('id-ID')}</p>
+      <button className="btn w-full mb-3" onClick={()=>setTab('latihan')}>Mulai mode latihan</button>
+      <h2 className="pf text-xl mb-2">Terbaru</h2>{list([...items].reverse().slice(0,5),'')}</>}
+    {tab==='search'&&<>{SearchBox}<select className="my-2" value={cat} onChange={e=>setCat(e.target.value)}><option value="">Semua kategori</option>{cats.map(c=><option key={c}>{c}</option>)}</select>
+      <p className="sm text-xs mb-2">{res.length} hasil</p>{list(res,dq)}</>}
+    {tab==='kategori'&&<><h2 className="pf text-xl mb-2">Kategori</h2>{cats.map(c=><button key={c} className="card p-3 mb-2 w-full text-left flex justify-between" onClick={()=>{setCat(c);setQ('');setTab('search')}}><span>{c}</span><span className="tag">{items.filter(i=>i.cat===c).length}</span></button>)}</>}
+    {tab==='favorit'&&<><h2 className="pf text-xl mb-2">Favorit</h2>{SearchBox}<div className="mt-2">{list(search(favItems,dq,''),dq)}</div></>}
+    {tab==='latihan'&&<Practice items={items} cats={cats} toast={toast} reload={reload}/>}
+    {tab==='setelan'&&<><div className="card p-3"><h2 className="pf text-xl">Pengaturan</h2>
+      <p className="sm text-xs break-all mt-2">API: {API_URL}</p>
+      <div className="flex flex-wrap gap-2 mt-2"><button className="btn" onClick={async()=>{try{await api('ping');toast('Server OK')}catch(e){toast('Server tidak terjangkau')}}}>Tes koneksi</button><button className="btn btn2" onClick={async()=>{await reload();toast('Disinkronkan')}}>Sinkronkan</button><button className="btn btn2" onClick={()=>setDark(!dark)}>{dark?'Terang':'Gelap'}</button>{inst&&<button className="btn" onClick={()=>inst.prompt()}>Pasang aplikasi</button>}</div>
+      <p className="sm text-xs mt-2">Versi 1.0 | Riwayat latihan: {data.RIWAYAT.length}</p></div>
+      <Admin data={data} items={items} toast={toast} reload={reload}/></>}
+    <nav className="fixed bottom-0 inset-x-0 bg-[#3B3028] text-[#F2E8D5] flex justify-around py-2 text-xs" style={{paddingBottom:'max(.5rem,env(safe-area-inset-bottom))'}}>
+      {[['home','Beranda'],['search','Cari'],['kategori','Kategori'],['favorit','Favorit'],['setelan','Setelan']].map(([k,l])=><button key={k} onClick={()=>{setTab(k);setPg(1)}} className={'px-2 py-1 '+(tab===k?'text-[#D6AC52] font-bold underline':'')}>{l}</button>)}</nav></div>;
+}
+function Screen({title,body,retry,detail}){return <div className="min-h-screen flex items-center justify-center p-6 text-center"><div className="card p-5"><h1 className="pf text-2xl">{title}</h1><p className="mt-2">{body}</p>{detail&&<p className="sm text-xs mt-1 text-[#A94B3C]">{detail}</p>}{retry&&<button className="btn mt-3" onClick={retry}>Coba Lagi</button>}</div></div>}
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script></body></html>
